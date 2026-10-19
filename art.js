@@ -47,12 +47,11 @@ function jellyPath(c) {
   c.bezierCurveTo(-22, 24, -29, 24, -34, 19);
   c.closePath();
 }
-export function jelly(c, x, y, angle, color, wobble, time, expression = 0) {
+function paintJelly(c, x, y, angle, color, expression = 0, blush = false) {
   c.save();
   c.translate(x, y);
   c.rotate(angle);
-  const squash = Math.cos(time / 66) * wobble * 0.13;
-  c.scale(1 + squash, (1 - squash) * 0.94);
+  c.scale(1, 0.94);
   const [light, dark] = palette[color];
   c.shadowColor = dark + "40";
   c.shadowBlur = 7;
@@ -110,8 +109,8 @@ export function jelly(c, x, y, angle, color, wobble, time, expression = 0) {
   ellipse(c, -23, 18, 9, 2, "#fff9");
   ellipse(c, 23, 18, 7, 2, "#fffb", -0.2);
   const ink = color === 1 ? "#77469e" : color === 2 ? "#496fa9" : "#a04d61";
-  ellipse(c, -17, 8, 4.1, 2.8, "#ff8fb49c");
-  ellipse(c, 17, 8, 4.1, 2.8, "#ff8fb49c");
+  ellipse(c, -17, 8, 4.1, 2.8, blush ? "#ff648dc9" : "#ff8fb49c");
+  ellipse(c, 17, 8, 4.1, 2.8, blush ? "#ff648dc9" : "#ff8fb49c");
   c.strokeStyle = ink;
   c.fillStyle = ink;
   c.lineWidth = 1.5;
@@ -141,6 +140,95 @@ export function jelly(c, x, y, angle, color, wobble, time, expression = 0) {
   c.fillStyle = "#f27c99";
   c.fill();
   c.stroke();
+  c.restore();
+}
+// Cached high-resolution sprites are warped in thin horizontal bands. This
+// deforms silhouette, gloss and face together, with a delayed wave at the top.
+const sprites = new Map();
+function sprite(color, expression, blush) {
+  const key = `${color}:${expression}:${blush}`;
+  if (!sprites.has(key)) {
+    const image = document.createElement("canvas");
+    image.width = 300;
+    image.height = 240;
+    const c = image.getContext("2d");
+    c.scale(3, 3);
+    if (blush) {
+      c.translate(50, 40);
+      c.scale(1, 0.94);
+      ellipse(c, -17, 8, 4.6, 3.1, "#ff56777a");
+      ellipse(c, 17, 8, 4.6, 3.1, "#ff56777a");
+    } else paintJelly(c, 50, 40, 0, color, expression);
+    sprites.set(key, image);
+  }
+  return sprites.get(key);
+}
+let warpCanvas, warpContext;
+export function jelly(
+  c,
+  x,
+  y,
+  angle,
+  color,
+  wobble,
+  time,
+  expression = 0,
+  motion = null,
+) {
+  const idle = Math.cos(time / 125) * wobble * 0.08;
+  const m = motion ?? {
+    sx: 1 + idle,
+    sy: 1 - idle,
+    bend: 0,
+    ripple: 0,
+    blush: 0,
+    offsetY: 0,
+    phase: 0,
+  };
+  const normal = sprite(color, expression, false);
+  c.save();
+  c.translate(x, y + m.offsetY);
+  c.rotate(angle);
+  if (m.blush < 0.01 && Math.abs(m.bend) < 0.1) {
+    c.scale(m.sx, m.sy);
+    c.drawImage(normal, -50, -40, 100, 80);
+    c.restore();
+    return;
+  }
+  if (!warpCanvas) {
+    warpCanvas = document.createElement("canvas");
+    warpCanvas.width = 360;
+    warpCanvas.height = 330;
+    warpContext = warpCanvas.getContext("2d");
+  }
+  const w = warpContext;
+  w.clearRect(0, 0, 360, 330);
+  const rosy = m.blush > 0.01 ? sprite(color, expression, true) : null;
+  // Rasterise to integer pixel rows BEFORE rotation or screen scaling. Adjacent
+  // translucent bands then share exact edges, avoiding visible horizontal seams.
+  const first = Math.max(0, Math.ceil((55 - 40 * m.sy) * 3));
+  const end = Math.min(330, Math.floor((55 + 40 * m.sy) * 3));
+  for (let row = first; row < end; row++) {
+    const localY = (row / 3 - 55) / m.sy,
+      sourceY = (localY + 40) * 3;
+    const v = Math.max(0, Math.min(1, (localY + 24) / 48)),
+      lag = (1 - v) * 0.95;
+    const shift =
+      m.bend * (0.2 + 0.8 * (1 - v)) +
+      m.blush * 0.8 * (1 - v) * Math.sin(m.phase - lag);
+    const width =
+      m.sx *
+      (1 + m.ripple * Math.sin(m.phase - lag) + m.blush * 0.025 * v * v * v);
+    const dx = 180 - 150 * width + shift * 3,
+      dw = 300 * width;
+    w.drawImage(normal, 0, sourceY, 300, 1 / m.sy, dx, row, dw, 1);
+    if (rosy) {
+      w.globalAlpha = m.blush;
+      w.drawImage(rosy, 0, sourceY, 300, 1 / m.sy, dx, row, dw, 1);
+      w.globalAlpha = 1;
+    }
+  }
+  c.drawImage(warpCanvas, -60, -55, 120, 110);
   c.restore();
 }
 function cloud(c, x, y, size = 1) {

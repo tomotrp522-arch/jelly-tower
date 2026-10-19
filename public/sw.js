@@ -1,4 +1,4 @@
-const VERSION = "jelly-tower-v2";
+const VERSION = "jelly-tower-v3";
 const ROOT = new URL("./", self.location.href);
 self.addEventListener("install", (event) => {
   event.waitUntil(

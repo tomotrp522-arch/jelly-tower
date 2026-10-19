@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { observeAudio, readRms } from "./audio-probe.js";
 async function drop(page, x = 0.5) {
   await page.waitForFunction(() => document.querySelector("#game").width > 300);
   const c = page.locator("#game");
@@ -45,10 +46,10 @@ test("touch stacking, falling, retry and persistent best", async ({ page }) => {
 test("sound persists and keyboard works on desktop", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("./");
-  await page.getByRole("button", { name: "効果音をオフにする" }).click();
+  await page.getByRole("button", { name: "音楽と効果音をオフにする" }).click();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "効果音をオンにする" }),
+    page.getByRole("button", { name: "音楽と効果音をオンにする" }),
   ).toHaveAttribute("aria-pressed", "false");
   await page.locator("#game").focus();
   await page.keyboard.press("ArrowLeft");
@@ -60,6 +61,7 @@ test("sound persists and keyboard works on desktop", async ({ page }) => {
   });
 });
 test("subdirectory PWA shell works offline", async ({ page, context }) => {
+  await observeAudio(page);
   await page.goto("./");
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
@@ -73,6 +75,13 @@ test("subdirectory PWA shell works offline", async ({ page, context }) => {
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator("h1")).toContainText("ゼリータワー");
+  await page.getByRole("button", { name: "遊びかた" }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.__audio[0]?.state))
+    .toBe("running");
+  await page.waitForTimeout(300);
+  expect(await readRms(page)).toBeGreaterThan(0.00001);
+  await page.getByRole("button", { name: "遊びかた" }).click();
   await drop(page);
   await expect(page.locator("#score")).toHaveText("1こ");
   await page.screenshot({

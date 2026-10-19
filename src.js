@@ -1,5 +1,7 @@
 import Matter from "matter-js";
 import "./style.css";
+import { SweetAudio } from "./audio.js";
+import { deformation, transmit } from "./motion.js";
 import { palette, jelly, backdrop, plate, star } from "./art.js";
 const { Engine, Bodies, Composite, Events } = Matter;
 const canvas = document.querySelector("#game"),
@@ -24,10 +26,11 @@ let engine,
   clock = 0,
   last = 0,
   accumulator = 0,
-  drag = null,
-  audio;
+  drag = null;
+let recordCelebrated = false;
 let best = read("jelly-best", 0),
   sound = read("jelly-sound", true);
+const audio = new SweetAudio(sound);
 function read(key, fallback) {
   try {
     return JSON.parse(localStorage.getItem(key)) ?? fallback;
@@ -54,31 +57,12 @@ function soundButton() {
   b.setAttribute("aria-pressed", String(sound));
   b.setAttribute(
     "aria-label",
-    sound ? "効果音をオフにする" : "効果音をオンにする",
+    sound ? "音楽と効果音をオフにする" : "音楽と効果音をオンにする",
   );
   b.style.opacity = sound ? "1" : ".45";
 }
 function unlockAudio() {
-  if (!sound) return;
-  try {
-    audio ??= new (window.AudioContext || window.webkitAudioContext)();
-    if (audio.state === "suspended") audio.resume().catch(() => {});
-  } catch {}
-}
-function plop() {
-  if (!sound || !audio) return;
-  const t = audio.currentTime,
-    o = audio.createOscillator(),
-    g = audio.createGain();
-  o.type = "sine";
-  o.frequency.setValueAtTime(680, t);
-  o.frequency.exponentialRampToValueAtTime(200, t + 0.14);
-  g.gain.setValueAtTime(0.08, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.19);
-  o.connect(g);
-  g.connect(audio.destination);
-  o.start(t);
-  o.stop(t + 0.2);
+  audio.unlock();
 }
 function makeCurrent() {
   current = {
@@ -100,6 +84,8 @@ function reset() {
   engine.velocityIterations = 8;
   jellies = [];
   particles = [];
+  recordCelebrated = false;
+  audio.setPlaying(true);
   score = 0;
   over = false;
   camera = targetCamera = 0;
@@ -129,7 +115,8 @@ function reset() {
           if (!j.landed) {
             j.landed = true;
             score++;
-            if (score > best) {
+            const newRecord = score > best;
+            if (newRecord) {
               best = score;
               save("jelly-best", best);
             }
@@ -137,7 +124,12 @@ function reset() {
             document.querySelector("#announcement").textContent =
               `${score}こ積めました`;
             spawnAt = clock + 650;
-            plop();
+            audio.effect("land");
+            if (newRecord && !recordCelebrated) {
+              audio.effect("record", 0.2);
+              recordCelebrated = true;
+            } else if (score === 3 || score === 5 || score % 10 === 0)
+              audio.effect("milestone", 0.15);
             if (!reducedMotion) {
               for (let i = 0; i < 12; i++)
                 particles.push({
@@ -156,9 +148,15 @@ function reset() {
               scoreEl.classList.add("pop");
             }
           }
-          j.wobble = 1;
-          for (const b of jellies)
-            if (b !== body) b.plugin.wobble = Math.max(b.plugin.wobble, 0.35);
+          if (
+            clock - (j.lastImpact ?? -Infinity) > 240 &&
+            (j.incomingSpeed > 1.6 || !j.pulses)
+          ) {
+            const strength = Math.min(1.2, 0.55 + (j.incomingSpeed ?? 0) / 18);
+            transmit(body, engine.pairs.list, clock, strength);
+            j.lastImpact = clock;
+            if (score >= 3 && strength > 0.9) audio.effect("wobble", 0.3);
+          }
         }
       }
     }
@@ -171,6 +169,7 @@ function reset() {
 function drop() {
   if (!current || over) return;
   unlockAudio();
+  audio.effect("drop");
   const c = current;
   const b = Bodies.rectangle(c.x, c.y, jellyW, jellyH, {
     chamfer: { radius: 12 },
@@ -197,6 +196,8 @@ function drop() {
 function gameOver() {
   if (over) return;
   over = true;
+  audio.setPlaying(false);
+  audio.effect("gameover");
   current = null;
   document.querySelector("#result-score").innerHTML = `${score}<span>こ</span>`;
   document.querySelector("#record").textContent =
@@ -208,6 +209,8 @@ function gameOver() {
 }
 function tick(dt) {
   clock += dt;
+  for (const b of jellies)
+    b.plugin.incomingSpeed = Math.hypot(b.velocity.x, b.velocity.y);
   Engine.update(engine, dt);
   particles = particles.filter((p) => (p.age += dt) < p.life);
   for (const p of particles) {
@@ -216,7 +219,9 @@ function tick(dt) {
     p.vy += 0.035;
   }
   for (const b of jellies) {
-    b.plugin.wobble *= 0.94;
+    b.plugin.pulses = (b.plugin.pulses ?? []).filter(
+      (p) => clock - p.at < 1700,
+    );
     if (b.position.y > plateY + 65 || Math.abs(b.position.x - 200) > 420) {
       gameOver();
     }
@@ -255,17 +260,30 @@ function draw() {
   }
   ctx.globalAlpha = 1;
   plate(ctx, plateY - camera);
-  for (const b of jellies)
+  for (const b of jellies) {
+    if (b.position.y - camera < -55 || b.position.y - camera > H + 55) continue;
     jelly(
       ctx,
       b.position.x,
       b.position.y - camera,
       b.angle,
       b.plugin.color,
-      reducedMotion ? 0 : b.plugin.wobble,
+      0,
       clock,
       b.plugin.expression,
+      deformation(
+        b.plugin,
+        clock,
+        {
+          speed: b.velocity.y,
+          landed: b.plugin.landed,
+          height: plateY - b.position.y,
+          phase: b.id * 0.7,
+        },
+        reducedMotion,
+      ),
     );
+  }
   if (current) {
     ctx.setLineDash([1, 8]);
     ctx.lineCap = "round";
@@ -355,7 +373,7 @@ document.querySelector("#sound").addEventListener("click", () => {
   sound = !sound;
   save("jelly-sound", sound);
   soundButton();
-  unlockAudio();
+  audio.setEnabled(sound);
 });
 document.querySelector("#help").addEventListener("click", (e) => {
   const p = document.querySelector("#instructions");
@@ -365,6 +383,12 @@ document.querySelector("#help").addEventListener("click", (e) => {
 document.addEventListener("visibilitychange", () => {
   last = 0;
   accumulator = 0;
+  audio.setVisible(!document.hidden);
+});
+// Only trusted user interaction unlocks mobile audio; never autoplay on load.
+document.addEventListener("pointerdown", unlockAudio, { passive: true });
+document.addEventListener("keydown", (e) => {
+  if ([" ", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) unlockAudio();
 });
 soundButton();
 reset();
