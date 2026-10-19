@@ -1,0 +1,32 @@
+{
+  "name": "jelly-tower",
+  "version": "1.0.0",
+  "description": "ぷるぷるゼリータワーゲーム",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomotrp522-arch/jelly-tower.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/tomotrp522-arch/jelly-tower/issues"
+  },
+  "homepage": "https://github.com/tomotrp522-arch/jelly-tower#readme",
+  "dependencies": {
+    "matter-js": "^0.20.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "vite": "^8.3.4"
+  },
+  "private": true
+}

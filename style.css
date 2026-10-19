@@ -1,0 +1,342 @@
+:root {
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  color: #564e67;
+  background: #faf6ee;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 0 40%, #f6e8e975, transparent 45%),
+    radial-gradient(ellipse at 100% 80%, #e5eee675, transparent 40%);
+  min-height: 100svh;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible,
+canvas:focus-visible {
+  outline: 3px solid #8e78b2;
+  outline-offset: 4px;
+}
+.app {
+  max-width: 1000px;
+  margin: auto;
+  padding: 0 38px;
+}
+header {
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e9e2d9;
+}
+.brand {
+  text-decoration: none;
+  color: #63576e;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-icon {
+  font-size: 26px;
+  color: #b8a0ca;
+  transform: rotate(-8deg);
+}
+.icon-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e4dcd4;
+  border-radius: 50%;
+  background: #fff9;
+  font-size: 22px;
+  color: #796b87;
+}
+main {
+  max-width: 440px;
+  margin: auto;
+}
+.intro {
+  text-align: center;
+  padding: 32px 0 23px;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 2.3px;
+  color: #99869f;
+  font-weight: 700;
+}
+h1 {
+  position: relative;
+  font-size: 35px;
+  line-height: 1.38;
+  letter-spacing: 3px;
+  margin: 12px 0 10px;
+  font-weight: 850;
+}
+h1 span {
+  display: block;
+}
+h1 i {
+  position: absolute;
+  font-style: normal;
+  font-size: 30px;
+  color: #c9aa63;
+  top: 0;
+  right: 36px;
+}
+.intro p {
+  font-size: 12px;
+  color: #96899a;
+  letter-spacing: 1px;
+}
+.game-shell {
+  position: relative;
+  background: #f0eafb;
+  border: 6px solid #fff;
+  border-radius: 27px;
+  box-shadow:
+    0 10px 35px #78647c12,
+    0 0 0 1px #e8dfe8;
+  overflow: hidden;
+  height: 510px;
+  touch-action: none;
+}
+.scorebar {
+  position: absolute;
+  top: 19px;
+  left: 23px;
+  right: 23px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 1;
+  pointer-events: none;
+}
+.scorebar > div {
+  display: flex;
+  flex-direction: column;
+}
+.label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #91809d;
+}
+.scorebar strong {
+  font-size: 34px;
+  font-weight: 750;
+  line-height: 1.4;
+  color: #68557e;
+}
+.scorebar strong span {
+  font-size: 11px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+.scorebar .best {
+  text-align: right;
+}
+.best strong {
+  font-size: 24px;
+  color: #9a86aa;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.hint {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  color: #9e8caf;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+.hint > span {
+  display: block;
+  font-size: 23px;
+  line-height: 1.4;
+}
+.below {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 23px 8px;
+}
+.tiny-jelly {
+  font-size: 31px;
+  color: #b2cbb9;
+  transform: rotate(-9deg);
+}
+.below p {
+  font-size: 11px;
+  line-height: 1.9;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+.below p span {
+  color: #a396a0;
+  font-size: 10px;
+}
+.below button {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: #8e8096;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.below button span {
+  margin-left: 7px;
+}
+#instructions {
+  font-size: 12px;
+  line-height: 1.9;
+  padding: 0 10px;
+  color: #88798f;
+}
+footer {
+  text-align: center;
+  padding: 10px 0 24px;
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  color: #b0a3ad;
+}
+footer span {
+  color: #b6bf9c;
+  margin-left: 10px;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: #f3eef1bd;
+  backdrop-filter: blur(6px);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+}
+.overlay[hidden] {
+  display: none;
+}
+.result {
+  text-align: center;
+  padding: 28px;
+  width: 90%;
+}
+.result h2 {
+  font-size: 25px;
+}
+.result p {
+  font-size: 12px;
+  color: #97849d;
+}
+.result > strong {
+  font-size: 72px;
+  color: #9274ad;
+}
+.result > strong span {
+  font-size: 18px;
+}
+.result button {
+  display: block;
+  margin: 24px auto 0;
+  border: 0;
+  background: #8e77a8;
+  color: white;
+  padding: 15px 28px;
+  border-radius: 30px;
+  font-size: 13px;
+  box-shadow: 0 5px 0 #77618d;
+}
+.result button span {
+  margin-left: 20px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 540px) {
+  .app {
+    padding: 0 22px;
+  }
+  header {
+    height: 65px;
+  }
+  .intro {
+    padding: 23px 0 16px;
+  }
+  h1 {
+    font-size: 30px;
+    letter-spacing: 2px;
+    margin-top: 8px;
+  }
+  h1 i {
+    right: 30px;
+    font-size: 25px;
+  }
+  .intro p {
+    margin: 8px;
+  }
+  .eyebrow {
+    font-size: 8px;
+  }
+  .game-shell {
+    height: clamp(360px, 57svh, 530px);
+    border-width: 5px;
+  }
+  .below {
+    padding: 18px 3px;
+  }
+  footer {
+    font-size: 7px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-height: 720px) and (max-width: 540px) {
+  .intro {
+    padding: 12px 0;
+  }
+  h1 {
+    font-size: 25px;
+    margin: 5px;
+  }
+  .intro p {
+    font-size: 10px;
+  }
+  .game-shell {
+    height: 53svh;
+  }
+  .below {
+    padding: 12px 0;
+  }
+  header {
+    height: 53px;
+  }
+  footer {
+    padding-top: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto;
+  }
+}

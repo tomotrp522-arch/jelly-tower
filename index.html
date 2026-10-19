@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#faf6ee" />
+    <meta
+      name="description"
+      content="指でそっと、ぷるんと重ねる。かわいいゼリーのバランスゲーム。"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icons/jelly.svg" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <title>ぷるぷるゼリータワー</title>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <a class="brand" href="./" aria-label="ぷるぷるゼリータワー ホーム"
+          ><span class="brand-icon">▰</span> JELLY TOWER</a
+        ><button
+          id="sound"
+          class="icon-button"
+          aria-label="効果音をオフにする"
+          aria-pressed="true"
+        >
+          ♫
+        </button>
+      </header>
+      <main>
+        <section class="intro">
+          <span class="eyebrow">A LITTLE WOBBLE, A LOT OF JOY</span>
+          <h1>ぷるぷる<span>ゼリータワー</span><i>✧</i></h1>
+          <p>そっと重ねて、どこまで高く？</p>
+        </section>
+        <section class="game-shell" aria-label="ゼリーを積み上げるゲーム">
+          <div class="scorebar">
+            <div>
+              <span class="label">いまのスコア</span
+              ><strong id="score">0<span>こ</span></strong>
+            </div>
+            <div class="best">
+              <span class="label">♛ ベストスコア</span
+              ><strong id="best">0<span>こ</span></strong>
+            </div>
+          </div>
+          <canvas
+            id="game"
+            aria-label="左右にドラッグして、指を離すとゼリーが落ちます。キーボードは左右キーとスペースキー。"
+            tabindex="0"
+          ></canvas>
+          <div class="hint" id="hint">
+            <span>↔</span> 左右にうごかして、はなすだけ
+          </div>
+          <div class="overlay" id="gameover" hidden>
+            <div class="result">
+              <span class="eyebrow">NICE STACK!</span>
+              <h2>おつかれさま！</h2>
+              <p>ぷるぷる、よくできました。</p>
+              <strong id="result-score">0<span>こ</span></strong>
+              <p id="record"></p>
+              <button id="retry">もういちど遊ぶ <span>↻</span></button>
+            </div>
+          </div>
+        </section>
+        <div class="below">
+          <span class="tiny-jelly">▰</span>
+          <p>
+            あせらず、ゆっくり。<br /><span
+              >ちょっとのゆらぎも、楽しもう。</span
+            >
+          </p>
+          <button id="help" aria-expanded="false">
+            遊びかた <span>↗</span>
+          </button>
+        </div>
+        <p id="instructions" hidden>
+          ゼリーを左右にドラッグして、指を離すと落下。お皿から落ちたらおしまい。PCでは左右キーで移動、スペースキーで落とせます。ホーム画面に追加するとオフラインでも遊べます。
+        </p>
+      </main>
+      <footer>MADE OF JELLY & A LITTLE BIT OF MAGIC <span>✳</span></footer>
+    </div>
+    <div
+      id="announcement"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <script type="module" src="/src.js"></script>
+  </body>
+</html>
