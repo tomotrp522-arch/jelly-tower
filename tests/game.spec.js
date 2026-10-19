@@ -3,6 +3,7 @@ import { observeAudio, readRms } from "./audio-probe.js";
 async function drop(page, x = 0.5) {
   await page.waitForFunction(() => document.querySelector("#game").width > 300);
   const c = page.locator("#game");
+  await expect(c).toHaveAttribute("aria-busy", "false");
   const b = await c.boundingBox();
   await c.dispatchEvent("pointerdown", {
     pointerId: 1,
@@ -26,10 +27,10 @@ test("touch stacking, falling, retry and persistent best", async ({ page }) => {
   await expect(page.locator("#score")).toHaveText("0こ");
   await drop(page);
   await expect(page.locator("#score")).toHaveText("1こ");
-  await page.waitForTimeout(850);
+  await expect(page.locator("#game")).toHaveAttribute("aria-busy", "false");
   await drop(page);
   await expect(page.locator("#score")).toHaveText("2こ");
-  await page.waitForTimeout(850);
+  await expect(page.locator("#game")).toHaveAttribute("aria-busy", "false");
   await drop(page, 0.04);
   await expect(page.locator("#gameover")).toBeVisible({ timeout: 10000 });
   await page.screenshot({
@@ -96,7 +97,7 @@ test("tower remains playable as camera follows eight jellies", async ({
   for (let n = 1; n <= 8; n++) {
     await drop(page);
     await expect(page.locator("#score")).toHaveText(`${n}こ`);
-    await page.waitForTimeout(850);
+    await expect(page.locator("#game")).toHaveAttribute("aria-busy", "false");
   }
   await expect(page.locator("#gameover")).toBeHidden();
   await page.screenshot({

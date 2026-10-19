@@ -1,3 +1,4 @@
+import { drawAccessory } from "./accessories.js";
 // All scenery and characters are drawn locally; no external images or fonts.
 export const palette = [
   ["#ffafd6", "#f3589f"],
@@ -6,6 +7,13 @@ export const palette = [
   ["#fff09b", "#f4b938"],
   ["#d5f59a", "#91c945"],
   ["#ffc694", "#ff8a42"],
+  ["#ffbdcf", "#f56290"],
+  ["#ffe9a1", "#e6b657"],
+  ["#b8f3ff", "#49b8df"],
+  ["#d6b4ff", "#9559cf"],
+  ["#ffe0ed", "#e9a2c0"],
+  ["#b4b4ff", "#6864ba"],
+  ["#ffc5e1", "#b995e3"],
 ];
 const TAU = Math.PI * 2;
 function ellipse(c, x, y, rx, ry, fill, rotation = 0) {
@@ -57,11 +65,17 @@ function paintJelly(c, x, y, angle, color, expression = 0, blush = false) {
   c.shadowBlur = 7;
   c.shadowOffsetY = 3;
   const g = c.createLinearGradient(-12, -25, 12, 26);
-  g.addColorStop(0, "#fff9");
-  g.addColorStop(0.17, light + "ee");
-  g.addColorStop(0.52, dark + "c9");
-  g.addColorStop(0.85, light + "ed");
-  g.addColorStop(1, "#fff9");
+  if (color === 12) {
+    ["#ffd0df", "#ffe9a7", "#c7efcc", "#b7e5fa", "#d7b8f3"].forEach((v, i) =>
+      g.addColorStop(i / 4, v),
+    );
+  } else {
+    g.addColorStop(0, "#fff9");
+    g.addColorStop(0.17, light + "ee");
+    g.addColorStop(0.52, dark + "c9");
+    g.addColorStop(0.85, light + "ed");
+    g.addColorStop(1, "#fff9");
+  }
   jellyPath(c);
   c.fillStyle = g;
   c.fill();
@@ -78,6 +92,66 @@ function paintJelly(c, x, y, angle, color, expression = 0, blush = false) {
   glow.addColorStop(1, dark + "25");
   c.fillStyle = glow;
   c.fillRect(-40, -28, 80, 56);
+  // Ingredient patterns stay clipped inside the same glossy body silhouette.
+  if (color === 6)
+    for (let i = 0; i < 14; i++)
+      ellipse(
+        c,
+        -26 + ((i * 17) % 53),
+        -13 + ((i * 11) % 31),
+        0.65,
+        1.1,
+        "#fff3ac",
+        0.4,
+      );
+  if (color === 7) {
+    c.fillStyle = "#bd794edb";
+    c.beginPath();
+    c.moveTo(-35, -23);
+    c.lineTo(35, -23);
+    c.lineTo(31, -10);
+    c.bezierCurveTo(16, -16, 10, -6, 0, -12);
+    c.bezierCurveTo(-12, -17, -22, -7, -33, -12);
+    c.closePath();
+    c.fill();
+  }
+  if (color === 8)
+    for (let i = 0; i < 10; i++) {
+      c.beginPath();
+      c.arc(-28 + ((i * 19) % 56), -15 + ((i * 13) % 34), 1 + (i % 3), 0, TAU);
+      c.strokeStyle = "#ffffffa8";
+      c.lineWidth = 0.7;
+      c.stroke();
+    }
+  if (color === 9)
+    for (const x of [-25, 24])
+      for (const [dx, dy] of [
+        [-2, -2],
+        [2, -2],
+        [0, 2],
+      ])
+        ellipse(c, x + dx, -8 + dy, 2, 2, "#b581daaa");
+  if (color === 10)
+    for (let i = 0; i < 8; i++)
+      ellipse(
+        c,
+        -26 + ((i * 17) % 52),
+        -15 + ((i * 11) % 33),
+        2,
+        3,
+        "#f69fb69c",
+        i * 0.7,
+      );
+  if (color === 11)
+    for (let i = 0; i < 9; i++)
+      star(c, -26 + ((i * 19) % 52), -13 + ((i * 11) % 31), 1.6, "#fff1af");
+  if (color === 12)
+    for (const [x, y] of [
+      [-25, -10],
+      [24, 10],
+      [-22, 14],
+    ])
+      star(c, x, y, 2, "#fffef0");
   for (const offset of [-27, -17, 20, 29]) {
     c.beginPath();
     c.moveTo(offset * 0.77, -18);
@@ -109,8 +183,22 @@ function paintJelly(c, x, y, angle, color, expression = 0, blush = false) {
   ellipse(c, -23, 18, 9, 2, "#fff9");
   ellipse(c, 23, 18, 7, 2, "#fffb", -0.2);
   const ink = color === 1 ? "#77469e" : color === 2 ? "#496fa9" : "#a04d61";
-  ellipse(c, -17, 8, 4.1, 2.8, blush ? "#ff648dc9" : "#ff8fb49c");
-  ellipse(c, 17, 8, 4.1, 2.8, blush ? "#ff648dc9" : "#ff8fb49c");
+  ellipse(
+    c,
+    -17,
+    8,
+    4.1,
+    2.8,
+    blush ? "#ff648dc9" : color === 6 ? "#f76a8da9" : "#ff8fb49c",
+  );
+  ellipse(
+    c,
+    17,
+    8,
+    4.1,
+    2.8,
+    blush ? "#ff648dc9" : color === 6 ? "#f76a8da9" : "#ff8fb49c",
+  );
   c.strokeStyle = ink;
   c.fillStyle = ink;
   c.lineWidth = 1.5;
@@ -174,6 +262,7 @@ export function jelly(
   time,
   expression = 0,
   motion = null,
+  accessory = "",
 ) {
   const idle = Math.cos(time / 125) * wobble * 0.08;
   const m = motion ?? {
@@ -192,6 +281,7 @@ export function jelly(
   if (m.blush < 0.01 && Math.abs(m.bend) < 0.1) {
     c.scale(m.sx, m.sy);
     c.drawImage(normal, -50, -40, 100, 80);
+    drawAccessory(c, accessory, 0, -25);
     c.restore();
     return;
   }
@@ -229,6 +319,12 @@ export function jelly(
     }
   }
   c.drawImage(warpCanvas, -60, -55, 120, 110);
+  c.save();
+  c.translate(m.bend + m.blush * 0.8 * Math.sin(m.phase - 0.95), -25 * m.sy);
+  c.rotate(m.bend * 0.012);
+  c.scale(m.sx, m.sy);
+  drawAccessory(c, accessory, 0, 0);
+  c.restore();
   c.restore();
 }
 function cloud(c, x, y, size = 1) {

@@ -1,8 +1,12 @@
 import Matter from "matter-js";
 import "./style.css";
+import { ProgressStore } from "./progress.js";
+import { BY_ID } from "./catalog.js";
+import { createHub } from "./hub.js";
+import { scene } from "./backgrounds.js";
 import { SweetAudio } from "./audio.js";
 import { deformation, transmit } from "./motion.js";
-import { palette, jelly, backdrop, plate, star } from "./art.js";
+import { jelly, plate, star } from "./art.js";
 const { Engine, Bodies, Composite, Events } = Matter;
 const canvas = document.querySelector("#game"),
   ctx = canvas.getContext("2d");
@@ -11,8 +15,20 @@ const W = 400,
   plateY = 428,
   jellyW = 76,
   jellyH = 47;
-const colors = palette;
-const scenery = backdrop();
+let storage;
+try {
+  storage = localStorage;
+} catch {
+  /* The store keeps an in-memory fallback. */
+}
+const progress = new ProgressStore(storage);
+let scenery = scene(progress.state.background),
+  oldScenery = null,
+  fadeStart = 0;
+let selectedBackground = progress.state.background;
+let paused = false,
+  runId = "",
+  runStarted = false;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let particles = [];
 let engine,
@@ -28,7 +44,7 @@ let engine,
   accumulator = 0,
   drag = null;
 let recordCelebrated = false;
-let best = read("jelly-best", 0),
+let best = progress.state.stats.best,
   sound = read("jelly-sound", true);
 const audio = new SweetAudio(sound);
 function read(key, fallback) {
@@ -65,10 +81,18 @@ function unlockAudio() {
   audio.unlock();
 }
 function makeCurrent() {
+  canvas.setAttribute("aria-busy", "false");
+  const kind =
+    BY_ID[
+      progress.state.enabled[
+        Math.floor(Math.random() * progress.state.enabled.length)
+      ]
+    ];
   current = {
     x: 200,
     y: targetCamera + 112,
-    color: Math.floor(Math.random() * colors.length),
+    kind: kind.id,
+    color: kind.color,
     expression: Math.floor(Math.random() * 4),
   };
   spawnAt = null;
@@ -83,6 +107,8 @@ function reset() {
   engine.positionIterations = 8;
   engine.velocityIterations = 8;
   jellies = [];
+  runId = crypto.randomUUID();
+  runStarted = false;
   particles = [];
   recordCelebrated = false;
   audio.setPlaying(true);
@@ -115,6 +141,7 @@ function reset() {
           if (!j.landed) {
             j.landed = true;
             score++;
+            progress.dispatch({ type: "stack", run: runId, score });
             const newRecord = score > best;
             if (newRecord) {
               best = score;
@@ -167,9 +194,14 @@ function reset() {
   makeCurrent();
 }
 function drop() {
-  if (!current || over) return;
+  if (!current || over || paused) return;
+  if (!runStarted) {
+    runStarted = true;
+    progress.dispatch({ type: "start", run: runId });
+  }
   unlockAudio();
   audio.effect("drop");
+  canvas.setAttribute("aria-busy", "true");
   const c = current;
   const b = Bodies.rectangle(c.x, c.y, jellyW, jellyH, {
     chamfer: { radius: 12 },
@@ -181,6 +213,7 @@ function drop() {
     label: "jelly",
     plugin: {
       color: c.color,
+      kind: c.kind,
       expression: c.expression,
       wobble: 0,
       landed: false,
@@ -196,6 +229,7 @@ function drop() {
 function gameOver() {
   if (over) return;
   over = true;
+  canvas.setAttribute("aria-busy", "true");
   audio.setPlaying(false);
   audio.effect("gameover");
   current = null;
@@ -249,7 +283,16 @@ function draw() {
   }
   ctx.setTransform(width / W, 0, 0, height / H, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  ctx.drawImage(scenery, 0, 0, W, H);
+  if (oldScenery) {
+    const blend = reducedMotion
+      ? 1
+      : Math.min(1, (performance.now() - fadeStart) / 450);
+    ctx.drawImage(oldScenery, 0, 0, W, H);
+    ctx.globalAlpha = blend;
+    ctx.drawImage(scenery, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+    if (blend === 1) oldScenery = null;
+  } else ctx.drawImage(scenery, 0, 0, W, H);
   for (let i = 0; i < 12; i++) {
     const x = (i * 137 + 51) % 400,
       y = (((i * 79 + 26 - camera * 0.12) % 390) + 390) % 390;
@@ -282,6 +325,7 @@ function draw() {
         },
         reducedMotion,
       ),
+      progress.state.accessories[b.plugin.kind] ?? "",
     );
   }
   if (current) {
@@ -303,6 +347,8 @@ function draw() {
       reducedMotion ? 0 : 0.14,
       clock,
       current.expression,
+      null,
+      progress.state.accessories[current.kind] ?? "",
     );
   }
   for (const p of particles) {
@@ -317,7 +363,7 @@ function frame(now) {
   last = now;
   if (!document.hidden) {
     while (accumulator >= 1000 / 60) {
-      if (!over) tick(1000 / 60);
+      if (!over && !paused) tick(1000 / 60);
       accumulator -= 1000 / 60;
     }
     draw();
@@ -333,7 +379,7 @@ function move(event) {
   );
 }
 canvas.addEventListener("pointerdown", (e) => {
-  if (!current || over || drag !== null || !e.isPrimary) return;
+  if (!current || over || paused || drag !== null || !e.isPrimary) return;
   unlockAudio();
   drag = e.pointerId;
   canvas.setPointerCapture(e.pointerId);
@@ -354,7 +400,7 @@ canvas.addEventListener("pointercancel", () => {
 canvas.addEventListener("keydown", (e) => {
   if (["ArrowLeft", "ArrowRight", " "].includes(e.key)) {
     e.preventDefault();
-    if (current) {
+    if (current && !paused) {
       if (e.key === " ") drop();
       else
         current.x = Math.max(
@@ -384,11 +430,40 @@ document.addEventListener("visibilitychange", () => {
   last = 0;
   accumulator = 0;
   audio.setVisible(!document.hidden);
+  if (!document.hidden) progress.refresh();
 });
 // Only trusted user interaction unlocks mobile audio; never autoplay on load.
 document.addEventListener("pointerdown", unlockAudio, { passive: true });
 document.addEventListener("keydown", (e) => {
   if ([" ", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) unlockAudio();
+});
+createHub(progress, {
+  pause(value) {
+    paused = value;
+    drag = null;
+    last = 0;
+    accumulator = 0;
+    audio.setPlaying(!over && !paused);
+  },
+  sound(name) {
+    audio.unlock();
+    audio.effect(name);
+  },
+  changed(state) {
+    best = Math.max(best, state.stats.best);
+    updateScores();
+    if (state.background !== selectedBackground) {
+      oldScenery = scenery;
+      scenery = scene(state.background);
+      fadeStart = performance.now();
+      selectedBackground = state.background;
+    }
+    if (current && !state.enabled.includes(current.kind)) {
+      const next = BY_ID[state.enabled[0]];
+      current.kind = next.id;
+      current.color = next.color;
+    }
+  },
 });
 soundButton();
 reset();
