@@ -29,7 +29,7 @@ npm run build
 npm test
 ```
 
-システムの Chromium を使う場合は `CHROMIUM_PATH=/usr/bin/chromium npm test`。テストは `/jelly-tower/` 配下で、タッチによる2個の積み上げ、落下とゲームオーバー、リトライ、ベスト記録保存、効果音設定保存、キーボード操作、オフライン再読み込み後のプレイを確認します。
+システムの Chromium を使う場合は `CHROMIUM_PATH=/usr/bin/chromium npm test`。テストは Chromium の iPhone / Android / PC 設定で `/jelly-tower/` 配下を開き、タッチによる2個の積み上げ、落下とゲームオーバー、リトライ、ベスト記録保存、効果音設定保存、キーボード操作、オフライン再読み込み後のプレイを確認します。
 
 ## GitHub Pages で公開
 
@@ -49,8 +49,15 @@ Vite の `base: './'`、manifest と Service Worker の相対URLにより、サ�
 ## 構成
 
 - `src.js`: 入力・Matter.js・カメラ・描画・Web Audio・スコア保存
-- `style.css` / `index.html`: レスポンシブUI
+- `art.js`: 6色の立体ゼリー・ランダム表情・スイーツショップ背景・フリル皿のCanvas描画
+- `style.css` / `index.html`: 雲のスコア表示・パステルUI・レスポンシブレイアウト
 - `public/`: PWA manifest・Service Worker・アイコン
 - `tests/`: Playwright の実ブラウザテスト
 
 柔らかさは剛体物理に重ねた視覚表現です。物理モデルそのものはソフトボディではありません。ブラウザの実機ごとの差は iPhone / Android でも確認してください。
+
+## デザインと演出
+
+ピンクのカーテンと水色の空を背景に、白いフリル皿にゼリーを積みます。6色のゼリーにはランダムな4種類の表情・ほっぺ・白いハイライトを描き、着地すると星とハートが飛び散ります。背景のイチゴ・リボン・花を含め、すべてローカルの Canvas 描画と CSS で構成し、参照画像を背景に貼り付けていません。背景は起動時に一度描画して再利用します。
+
+「視差効果を減らす」等の reduced-motion 設定では、装飾パーティクル・ゼリーの描画上の揺れ・スコア拡大を抑えます。ゲームの物理演算と操作は変わりません。画面幅320〜1280pxで横方向のはみ出しとボタンの配置を自動確認します。ブラウザの端末エミュレーションでの検証であり、iOS Safari / Android Chrome の実機確認を置き換えるものではありません。

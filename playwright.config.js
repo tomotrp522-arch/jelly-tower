@@ -2,6 +2,15 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  workers: 2,
+  projects: [
+    {
+      name: "iphone",
+      use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" },
+    },
+    { name: "android", use: { ...devices["Pixel 7"] } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+  ],
   use: {
     baseURL: "http://127.0.0.1:4173/jelly-tower/",
     ...devices["iPhone 13"],

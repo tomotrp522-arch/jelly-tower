@@ -1,6 +1,7 @@
 import Matter from "matter-js";
 import "./style.css";
-const { Engine, Bodies, Body, Composite, Events } = Matter;
+import { palette, jelly, backdrop, plate, star } from "./art.js";
+const { Engine, Bodies, Composite, Events } = Matter;
 const canvas = document.querySelector("#game"),
   ctx = canvas.getContext("2d");
 const W = 400,
@@ -8,13 +9,10 @@ const W = 400,
   plateY = 428,
   jellyW = 76,
   jellyH = 47;
-const colors = [
-  ["#f0a8c9", "#d97bad"],
-  ["#bda6ec", "#9777cf"],
-  ["#9dd8ed", "#69b2d4"],
-  ["#f4da8c", "#d9b75f"],
-  ["#a7ddc8", "#77b99f"],
-];
+const colors = palette;
+const scenery = backdrop();
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let particles = [];
 let engine,
   current,
   jellies,
@@ -87,6 +85,7 @@ function makeCurrent() {
     x: 200,
     y: targetCamera + 112,
     color: Math.floor(Math.random() * colors.length),
+    expression: Math.floor(Math.random() * 4),
   };
   spawnAt = null;
 }
@@ -100,6 +99,7 @@ function reset() {
   engine.positionIterations = 8;
   engine.velocityIterations = 8;
   jellies = [];
+  particles = [];
   score = 0;
   over = false;
   camera = targetCamera = 0;
@@ -138,6 +138,23 @@ function reset() {
               `${score}こ積めました`;
             spawnAt = clock + 650;
             plop();
+            if (!reducedMotion) {
+              for (let i = 0; i < 12; i++)
+                particles.push({
+                  x: body.position.x,
+                  y: body.position.y + 12,
+                  vx: (Math.random() - 0.5) * 2.8,
+                  vy: -1 - Math.random() * 2.4,
+                  age: 0,
+                  life: 650 + Math.random() * 250,
+                  heart: i % 3 === 0,
+                  color: ["#ff8db8", "#ffdc73", "#fff9e7"][i % 3],
+                  size: 2 + Math.random() * 2,
+                });
+              scoreEl.classList.remove("pop");
+              void scoreEl.offsetWidth;
+              scoreEl.classList.add("pop");
+            }
           }
           j.wobble = 1;
           for (const b of jellies)
@@ -163,7 +180,13 @@ function drop() {
     density: 0.002,
     frictionAir: 0.008,
     label: "jelly",
-    plugin: { color: c.color, wobble: 0, landed: false, dropped: clock },
+    plugin: {
+      color: c.color,
+      expression: c.expression,
+      wobble: 0,
+      landed: false,
+      dropped: clock,
+    },
   });
   jellies.push(b);
   Composite.add(engine.world, b);
@@ -186,6 +209,12 @@ function gameOver() {
 function tick(dt) {
   clock += dt;
   Engine.update(engine, dt);
+  particles = particles.filter((p) => (p.age += dt) < p.life);
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.035;
+  }
   for (const b of jellies) {
     b.plugin.wobble *= 0.94;
     if (b.position.y > plateY + 65 || Math.abs(b.position.x - 200) > 420) {
@@ -204,62 +233,6 @@ function tick(dt) {
   camera += (targetCamera - camera) * 0.07;
   if (current) current.y = targetCamera + 112;
 }
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
-}
-function drawJelly(x, y, angle, color, wobble = 0, ghost = false) {
-  ctx.save();
-  ctx.translate(x, y - camera);
-  ctx.rotate(angle);
-  const t = clock / 70;
-  const squash = Math.sin(t) * wobble * 0.12;
-  ctx.scale(1 + squash, 1 - squash);
-  const [base, edge] = colors[color];
-  ctx.shadowColor = edge + "40";
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 7;
-  const g = ctx.createLinearGradient(0, -24, 0, 24);
-  g.addColorStop(0, base + "dd");
-  g.addColorStop(0.55, base + "ed");
-  g.addColorStop(1, edge + "ee");
-  roundRect(-38, -23.5, 76, 47, [17, 17, 14, 14]);
-  ctx.fillStyle = g;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.strokeStyle = edge + "99";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  roundRect(-30, -19, 60, 15, 10);
-  ctx.fillStyle = "#ffffff39";
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(-22, -12, 8, 3, -0.3, 0, Math.PI * 2);
-  ctx.fillStyle = "#fff9";
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(25, 12, 3, 5, 0.5, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff45";
-  ctx.fill();
-  ctx.fillStyle = "#65527888";
-  ctx.beginPath();
-  ctx.arc(-10, 3, 1.8, 0, 7);
-  ctx.arc(10, 3, 1.8, 0, 7);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(0, 5, 4, 0, Math.PI);
-  ctx.strokeStyle = "#65527877";
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-  if (ghost) {
-    ctx.strokeStyle = "#fff9";
-    ctx.lineWidth = 1;
-    roundRect(-35, -21, 70, 42, 15);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
 function draw() {
   const dpr = Math.min(devicePixelRatio || 1, 2);
   const r = canvas.getBoundingClientRect();
@@ -271,77 +244,54 @@ function draw() {
   }
   ctx.setTransform(width / W, 0, 0, height / H, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#ede6f8");
-  bg.addColorStop(0.7, "#f6edf4");
-  bg.addColorStop(1, "#f5eee9");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 23; i++) {
-    const x = (i * 137 + 31) % 400,
-      y = (((i * 79 + 40 - camera * 0.25) % 500) + 500) % 500;
-    ctx.fillStyle = i % 2 ? "#ffffff8c" : "#c8b6d63b";
-    ctx.beginPath();
-    ctx.arc(x, y, i % 3 === 0 ? 2 : 1.2, 0, 7);
-    ctx.fill();
+  ctx.drawImage(scenery, 0, 0, W, H);
+  for (let i = 0; i < 12; i++) {
+    const x = (i * 137 + 51) % 400,
+      y = (((i * 79 + 26 - camera * 0.12) % 390) + 390) % 390;
+    ctx.globalAlpha = reducedMotion
+      ? 0.55
+      : 0.35 + Math.sin(clock / 800 + i) * 0.25;
+    star(ctx, x, y, i % 3 === 0 ? 3 : 1.2, "#fffef3");
   }
-  ctx.fillStyle = "#ffffff55";
-  ctx.beginPath();
-  ctx.ellipse(30, 210 - camera * 0.12, 65, 27, -0.3, 0, 7);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(385, 310 - camera * 0.12, 60, 30, 0.2, 0, 7);
-  ctx.fill();
-  const py = plateY - camera;
-  ctx.fillStyle = "#d5c1d629";
-  ctx.beginPath();
-  ctx.ellipse(200, py + 27, 108, 12, 0, 0, 7);
-  ctx.fill();
-  ctx.fillStyle = "#d7c9df";
-  roundRect(157, py + 7, 86, 12, 6);
-  ctx.fill();
-  ctx.fillStyle = "#fff9";
-  roundRect(95, py - 9, 210, 17, 10);
-  ctx.fill();
-  ctx.strokeStyle = "#c8b6d5";
-  ctx.lineWidth = 1.4;
-  ctx.stroke();
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.ellipse(200, py - 7, 97, 8, 0, 0, 7);
-  ctx.fill();
-  ctx.strokeStyle = "#e3d7e9";
-  ctx.stroke();
+  ctx.globalAlpha = 1;
+  plate(ctx, plateY - camera);
   for (const b of jellies)
-    drawJelly(
+    jelly(
+      ctx,
       b.position.x,
-      b.position.y,
+      b.position.y - camera,
       b.angle,
       b.plugin.color,
-      b.plugin.wobble,
+      reducedMotion ? 0 : b.plugin.wobble,
+      clock,
+      b.plugin.expression,
     );
   if (current) {
-    ctx.setLineDash([3, 6]);
+    ctx.setLineDash([1, 8]);
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(current.x, current.y - camera + 35);
-    ctx.lineTo(current.x, Math.min(H - 70, py - 16));
-    ctx.strokeStyle = "#b49bc04a";
-    ctx.lineWidth = 1.5;
+    ctx.moveTo(current.x, current.y - camera + 32);
+    ctx.lineTo(current.x, Math.min(H - 70, plateY - camera - 16));
+    ctx.strokeStyle = "#f69ec0a6";
+    ctx.lineWidth = 2.5;
     ctx.stroke();
     ctx.setLineDash([]);
-    drawJelly(
+    jelly(
+      ctx,
       current.x,
-      current.y,
-      Math.sin(clock / 400) * 0.025,
+      current.y - camera,
+      reducedMotion ? 0 : Math.sin(clock / 400) * 0.025,
       current.color,
-      0.14,
-      true,
+      reducedMotion ? 0 : 0.14,
+      clock,
+      current.expression,
     );
-    ctx.fillStyle = "#a58bb5";
-    ctx.font = "10px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("ここから、ぷるん。", current.x, current.y - camera - 39);
   }
+  for (const p of particles) {
+    ctx.globalAlpha = 1 - p.age / p.life;
+    star(ctx, p.x, p.y - camera, p.size, p.color, p.heart);
+  }
+  ctx.globalAlpha = 1;
 }
 function frame(now) {
   if (!last) last = now;
